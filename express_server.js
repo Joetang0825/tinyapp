@@ -16,8 +16,10 @@ app.get("/urls/new", (req, res) => {
 })
 
 app.post("/urls", (req, res) => {
-  console.log(req.body);
-  res.send("Ok");
+  let shortURL = generateRandomString();
+  urlDatabase[shortURL] = req.body.longURL;
+
+  res.redirect(`/urls/${shortURL}`);
 })
 
 app.get("/urls", (req, res) => {
@@ -28,6 +30,11 @@ app.get("/urls", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { longURL: urlDatabase[req.params.shortURL], shortURL: req.params.shortURL };
   res.render("urls_show", templateVars);
+})
+
+app.get("/u/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL];
+  res.redirect(longURL);
 })
 
 
@@ -60,8 +67,10 @@ app.listen(PORT, () => {
 function generateRandomString() {
   let characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
   let randomString = '';
+
   for (let j = 0; j < 6; j++) {
     randomString += characters[Math.floor(Math.random() * characters.length)];
   }
-  console.log(randomString);
+
+  return randomString;
 }
