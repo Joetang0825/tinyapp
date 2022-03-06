@@ -1,13 +1,24 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const app = express();
 const PORT = 8080;
 
+app.use(bodyParser.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
 }
+
+app.get("/urls/new", (req, res) => {
+  res.render("urls_new")
+})
+
+app.post("/urls", (req, res) => {
+  console.log(req.body);
+  res.send("Ok");
+})
 
 app.get("/urls", (req, res) => {
   const templateVars = { urls: urlDatabase };
@@ -45,3 +56,12 @@ app.get("/fetch", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
+
+function generateRandomString() {
+  let characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+  let randomString = '';
+  for (let j = 0; j < 6; j++) {
+    randomString += characters[Math.floor(Math.random() * characters.length)];
+  }
+  console.log(randomString);
+}
