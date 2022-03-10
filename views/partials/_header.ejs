@@ -9,22 +9,18 @@
         <a class="nav-item nav-link" href="/urls">My URLs</a>
         <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
       </div>
-      <div style = "position:sticky; left:1800px;">
-        <%if (typeof username !== 'undefined') { %>
-
+      <div class="navbar-nav" style = "position:sticky; left:1800px;">
+        <% if (typeof user !== 'undefined') { %>
           <form action="/logout" class="search-form" method = "POST">
-            <text>Logged in As: <%=username%></text>
-            <button type="submit" style="background-color:green; color: black">Logout</button> 
+            <text>Logged in As: <%=user.email%></text>
+            <button type="submit" style="background-color:green; color: whitesmoke">Logout</button> 
           </form>
+        <% } else { %>
+          <div class="navbar-nav">
+            <a class="nav-item nav-link" href="/login">Login</a>
+            <a class="nav-item nav-link" href="/register">Register</a>
+          </div>
         <% } %>
-        <%if (typeof username === 'undefined') { %>
-          <form action="/login" class="search-form" method = "POST">
-            <input type="text" name="username" placeholder=""Username" />
-            <button type="submit" style="background-color:green; color: black">Login</button> 
-          </form>
-        <% } %>
-
-
       </div>
     </div>
   </nav>
