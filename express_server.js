@@ -11,34 +11,54 @@ app.set("view engine", "ejs");
 
 // set up URL database
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
-}
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "user2RandomID"
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "userRandomID"
+  }
+};
 
 // set up some sample users
 const users = {
   "userRandomID": {
     id: "userRandomID",
     email: "user@example.com",
-    password: "purple-monkey-dinosaur"
+    password: "111"
   },
   "user2RandomID": {
     id: "user2RandomID",
     email: "user2@example.com",
-    password: "dishwasher-funk"
+    password: "222"
   }
 }
 
+
 // Function to find user by email address
 const findUserByEmail = (email) => {
+  let user;
   for (const userid in users) {
-    const user = users[userid];
+    user = users[userid];
     if (user.email === email) {
       return user;
     }
   }
   return null;
 }
+
+const urlsForUser = function (id) {
+  let urls = {};
+  for (const url in urlDatabase) {
+    if (id === urlDatabase[url]["userID"]) {
+      urls[url] = urlDatabase[url]["longURL"];
+    }
+  }
+  return urls;
+}
+
+
 
 // Show login page
 app.get("/login", (req, res) => {
@@ -131,6 +151,11 @@ app.get("/urls/new", (req, res) => {
   // Retrieve user by using user_id cookie
   const user = users[req.cookies["user_id"]];
 
+  if (!user) {
+    res.redirect("/login");
+    return;
+  }
+
   const templateVars = { user }
   // Show create new url page
   res.render("urls_new", templateVars);
@@ -138,20 +163,69 @@ app.get("/urls/new", (req, res) => {
 
 // Delete URL from our URL database and then redirect to urls page
 app.post("/urls/:shortURL/delete", (req, res) => {
+
+  // If the user is not logged in, the app should return HTML with a relevant error message
+  const user = users[req.cookies["user_id"]];
+  if (!user) {
+    return res.status(400).send("Invalid credentials");
+  }
+
+  // If a URL with the given id does not exist, the app should return HTML with a relevant error message
+  if (typeof (urlDatabase[req.params.shortURL]) === "undefined") {
+    return res.status(400).send("URL not found");
+  }
+
+  // If the user is logged in but does not own the URL with the given id, the app should return HTML with a relevant error message
+  const urls = urlsForUser(req.cookies["user_id"]);
+  const lURL = urls[req.params.shortURL];
+  if (typeof (lURL) === "undefined") {
+    return res.status(400).send("You do not own the URL");
+  }
+
+  // User is logged in and the user is the owner of the URL, perform delete 
   delete urlDatabase[req.params.shortURL];
   res.redirect('/urls');
+
 })
 
 // Update existing URL with new one and then redirect to urls page
 app.post("/urls/:id", (req, res) => {
-  urlDatabase[req.params.id] = req.body.newLongURL;
+
+  // If the user is not logged in, the app should return HTML with a relevant error message
+  const user = users[req.cookies["user_id"]];
+  if (!user) {
+    return res.status(400).send("Invalid credentials");
+  }
+
+  // If a URL with the given id does not exist, the app should return HTML with a relevant error message
+  if (typeof (urlDatabase[req.params.id]) === "undefined") {
+    return res.status(400).send("URL not found");
+  }
+
+  // If the user is logged in but does not own the URL with the given id, the app should return HTML with a relevant error message
+  const urls = urlsForUser(req.cookies["user_id"]);
+  const lURL = urls[req.params.id];
+  if (typeof (lURL) === "undefined") {
+    return res.status(400).send("You do not own the URL");
+  }
+
+  // User is logged in and the user is the owner of the URL, update the URL
+  urlDatabase[req.params.id]["longURL"] = req.body.newLongURL;
   res.redirect('/urls');
 })
 
 // Create URL record
 app.post("/urls", (req, res) => {
+  const user = users[req.cookies["user_id"]];
+
+  if (!user) {
+    return res.status(400).send("Invalid credentials");
+  }
+
   let shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;
+  urlDatabase[shortURL] = {}
+  urlDatabase[shortURL]["longURL"] = req.body.longURL;
+  urlDatabase[shortURL]["userID"] = user.id;
 
   res.redirect(`/urls/${shortURL}`);
 })
@@ -160,20 +234,33 @@ app.post("/urls", (req, res) => {
 app.get("/urls", (req, res) => {
   const user = users[req.cookies["user_id"]];
   const templateVars = { urls: urlDatabase, user: user };
+
   res.render("urls_index", templateVars);
 })
 
 // Show page to Edit URL
 app.get("/urls/:shortURL", (req, res) => {
+  const urls = urlsForUser(req.cookies["user_id"]);
+  const lURL = urls[req.params.shortURL]
   const user = users[req.cookies["user_id"]];
-  const templateVars = { longURL: urlDatabase[req.params.shortURL], shortURL: req.params.shortURL, user: user };
+  const templateVars = { longURL: lURL, shortURL: req.params.shortURL, user: user };
+
   res.render("urls_show", templateVars);
 })
 
 // By providing short URL, redirect to long URL page
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
-  res.redirect(longURL);
+
+  const longURL = urlDatabase[req.params.shortURL]["longURL"];
+  const user = users[req.cookies["user_id"]];
+
+  if (!user) {
+    res.redirect(longURL + '?e=' + encodeURIComponent('User Id does not exist'));
+  }
+  else {
+    res.redirect(longURL);
+  }
+
 })
 
 // Default page of Tiny App
@@ -182,6 +269,7 @@ app.get("/", (req, res) => {
 });
 
 // Show a page with all URLs
+// Should not be exposed and comment out in production
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 })
