@@ -1,13 +1,16 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = 8080;
 
 
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  keys: ['key1', 'key2']
+}));
 
 app.set("view engine", "ejs");
 
@@ -94,7 +97,7 @@ app.post("/login", (req, res) => {
   }
 
   // User exists and set the cookie using user ID
-  res.cookie('user_id', user.id);
+  req.session.user_id = user.id;
 
   // Go back to the urls page
   res.redirect('/urls');
@@ -139,7 +142,7 @@ app.post("/register", (req, res) => {
   users[id] = user;
 
   // Set cookie user_id with newly generated ID
-  res.cookie('user_id', id);
+  req.session.user_id = id;
 
   // Go back to the urls page
   res.redirect('/urls');
@@ -148,7 +151,7 @@ app.post("/register", (req, res) => {
 
 // User logged out, clear cookie user_id
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id');
+  req.session = null;
   // Go back to the urls page
   res.redirect('/urls');
 })
@@ -156,7 +159,7 @@ app.post("/logout", (req, res) => {
 // Create new url
 app.get("/urls/new", (req, res) => {
   // Retrieve user by using user_id cookie
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session.user_id];
 
   if (!user) {
     res.redirect("/login");
@@ -172,7 +175,7 @@ app.get("/urls/new", (req, res) => {
 app.post("/urls/:shortURL/delete", (req, res) => {
 
   // If the user is not logged in, the app should return HTML with a relevant error message
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session.user_id];
   if (!user) {
     return res.status(400).send("Invalid credentials");
   }
@@ -183,7 +186,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   }
 
   // If the user is logged in but does not own the URL with the given id, the app should return HTML with a relevant error message
-  const urls = urlsForUser(req.cookies["user_id"]);
+  const urls = urlsForUser(req.session.user_id);
   const lURL = urls[req.params.shortURL];
   if (typeof (lURL) === "undefined") {
     return res.status(400).send("You do not own the URL");
@@ -199,7 +202,8 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 app.post("/urls/:id", (req, res) => {
 
   // If the user is not logged in, the app should return HTML with a relevant error message
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session.user_id];
+
   if (!user) {
     return res.status(400).send("Invalid credentials");
   }
@@ -210,7 +214,7 @@ app.post("/urls/:id", (req, res) => {
   }
 
   // If the user is logged in but does not own the URL with the given id, the app should return HTML with a relevant error message
-  const urls = urlsForUser(req.cookies["user_id"]);
+  const urls = urlsForUser(req.session.user_id);
   const lURL = urls[req.params.id];
   if (typeof (lURL) === "undefined") {
     return res.status(400).send("You do not own the URL");
@@ -224,7 +228,7 @@ app.post("/urls/:id", (req, res) => {
 
 // Create URL record
 app.post("/urls", (req, res) => {
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session.user_id];
 
   if (!user) {
     return res.status(400).send("Invalid credentials");
@@ -241,7 +245,7 @@ app.post("/urls", (req, res) => {
 
 // Show list of URLs from our URL database
 app.get("/urls", (req, res) => {
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session.user_id];
   const templateVars = { urls: urlDatabase, user: user };
 
   res.render("urls_index", templateVars);
@@ -249,9 +253,9 @@ app.get("/urls", (req, res) => {
 
 // Show page to Edit URL
 app.get("/urls/:shortURL", (req, res) => {
-  const urls = urlsForUser(req.cookies["user_id"]);
+  const urls = urlsForUser(req.session.user_id);
   const lURL = urls[req.params.shortURL]
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session.user_id];
   const templateVars = { longURL: lURL, shortURL: req.params.shortURL, user: user };
 
   res.render("urls_show", templateVars);
@@ -261,7 +265,7 @@ app.get("/urls/:shortURL", (req, res) => {
 app.get("/u/:shortURL", (req, res) => {
 
   const longURL = urlDatabase[req.params.shortURL]["longURL"];
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session.user_id];
 
   if (!user) {
     res.redirect(longURL + '?e=' + encodeURIComponent('User Id does not exist'));
