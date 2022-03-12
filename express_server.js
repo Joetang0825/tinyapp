@@ -2,14 +2,13 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cookieSession = require('cookie-session');
 const { getUserByEmail } = require('./helpers')
-
-
 const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = 8080;
 
 
 app.use(bodyParser.urlencoded({ extended: true }));
+// set up keys for cookie session
 app.use(cookieSession({
   name: 'session',
   keys: ['key1', 'key2']
@@ -17,7 +16,7 @@ app.use(cookieSession({
 
 app.set("view engine", "ejs");
 
-// set up URL database
+// set up sample URL database
 const urlDatabase = {
   b6UTxQ: {
     longURL: "https://www.tsn.ca",
@@ -29,7 +28,7 @@ const urlDatabase = {
   }
 };
 
-// set up some sample users
+// set up sample users
 const users = {
   "userRandomID": {
     id: "userRandomID",
@@ -43,6 +42,7 @@ const users = {
   }
 }
 
+// a function to find urls that a user owns and return urls as an object
 const urlsForUser = function (id) {
   let urls = {};
   for (const url in urlDatabase) {
@@ -52,7 +52,6 @@ const urlsForUser = function (id) {
   }
   return urls;
 }
-
 
 
 // Show login page
@@ -69,6 +68,7 @@ app.post("/login", (req, res) => {
 
 
   // email is empty or password is empty
+  // put "Invalid credentials" as the message instead of "email/password doesn't exist" to reduce exposure of internal info
   if (!email || !password) {
     return res.status(403).send("Invalid credentials");
   }
@@ -77,11 +77,13 @@ app.post("/login", (req, res) => {
   const user = getUserByEmail(email, users);
 
   // User does not exist, return status code 403
+  // put "Invalid credentials" as the message instead of "User doesn't exist" to reduce exposure of internal info
   if (!user) {
     return res.status(403).send("Invalid credentials");
   }
-  // User does exist but password does not match, return status code 403
 
+  // User does exist but password does not match, return status code 403
+  // put "Invalid credentials" as the message instead of "Password doesn't match" to reduce exposure of internal info
   if (bcrypt.compareSync(password, user.password) === false) {
     return res.status(403).send("Invalid credentials");
   }
@@ -106,6 +108,7 @@ app.post("/register", (req, res) => {
   // Remove whitespace at the front and end of email and password 
   const email = req.body.email.trim();
   let password = req.body.password.trim();
+  // hash password
   const hashedPassword = bcrypt.hashSync(password, 10);
 
   // email is empty or password is empty
@@ -123,7 +126,7 @@ app.post("/register", (req, res) => {
 
   password = hashedPassword;
 
-  // Create a new user and store it
+  // Create a new user and store its id, email and password
   user = {
     id,
     email,
@@ -151,6 +154,7 @@ app.get("/urls/new", (req, res) => {
   // Retrieve user by using user_id cookie
   const user = users[req.session.user_id];
 
+  // if the user is not logged in, redirect user to login page
   if (!user) {
     res.redirect("/login");
     return;
@@ -219,10 +223,12 @@ app.post("/urls/:id", (req, res) => {
 app.post("/urls", (req, res) => {
   const user = users[req.session.user_id];
 
+  // user doesn't exist
   if (!user) {
     return res.status(400).send("Invalid credentials");
   }
 
+  // user exists and we generate a record in our url database
   let shortURL = generateRandomString();
   urlDatabase[shortURL] = {};
   urlDatabase[shortURL]["longURL"] = req.body.longURL;
@@ -280,16 +286,6 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
-// Testing Scope 
-app.get("/set", (req, res) => {
-  const a = 1;
-  res.send(`a = ${a}`);
-})
-
-// Testing Scope
-app.get("/fetch", (req, res) => {
-  res.send(`a = ${a}`);
-})
 
 // Listen for requests
 app.listen(PORT, () => {
