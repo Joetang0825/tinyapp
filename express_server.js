@@ -1,8 +1,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = 8080;
+
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -26,12 +28,12 @@ const users = {
   "userRandomID": {
     id: "userRandomID",
     email: "user@example.com",
-    password: "111"
+    password: "$2a$10$jSOM6rYJInsi.2JGDnya7uLOn.rvU9XYtqiFSF1ltMfocteoEBEry"
   },
   "user2RandomID": {
     id: "user2RandomID",
     email: "user2@example.com",
-    password: "222"
+    password: "$2a$10$2S/lC9kA3CEHozLCiI0uSuvNNC41hiO4Ko2P9X0CC9sVzwUVGO5QW"
   }
 }
 
@@ -72,6 +74,7 @@ app.post("/login", (req, res) => {
   const email = req.body.email.trim();
   const password = req.body.password.trim();
 
+
   // email is empty or password is empty
   if (!email || !password) {
     return res.status(403).send("Invalid credentials");
@@ -85,7 +88,8 @@ app.post("/login", (req, res) => {
     return res.status(403).send("Invalid credentials");
   }
   // User does exist but password does not match, return status code 403
-  else if (user.password.localeCompare(password) !== 0) {
+
+  if (bcrypt.compareSync(password, user.password) === false) {
     return res.status(403).send("Invalid credentials");
   }
 
@@ -108,7 +112,8 @@ app.post("/register", (req, res) => {
   const id = generateRandomString();
   // Remove whitespace at the front and end of email and password 
   const email = req.body.email.trim();
-  const password = req.body.password.trim();
+  let password = req.body.password.trim();
+  const hashedPassword = bcrypt.hashSync(password, 10);
 
   // email is empty or password is empty
   if (!email || !password) {
@@ -122,6 +127,8 @@ app.post("/register", (req, res) => {
   if (user) {
     return res.status(400).send("Invalid credentials");
   }
+
+  password = hashedPassword;
 
   // Create a new user and store it
   user = {
@@ -211,6 +218,7 @@ app.post("/urls/:id", (req, res) => {
 
   // User is logged in and the user is the owner of the URL, update the URL
   urlDatabase[req.params.id]["longURL"] = req.body.newLongURL;
+  console.log(urlDatabase);
   res.redirect('/urls');
 })
 
@@ -223,10 +231,11 @@ app.post("/urls", (req, res) => {
   }
 
   let shortURL = generateRandomString();
-  urlDatabase[shortURL] = {}
+  urlDatabase[shortURL] = {};
   urlDatabase[shortURL]["longURL"] = req.body.longURL;
   urlDatabase[shortURL]["userID"] = user.id;
 
+  console.log(urlDatabase);
   res.redirect(`/urls/${shortURL}`);
 })
 
