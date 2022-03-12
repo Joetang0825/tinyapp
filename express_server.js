@@ -1,6 +1,9 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cookieSession = require('cookie-session');
+const { getUserByEmail } = require('./helpers')
+
+
 const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = 8080;
@@ -40,19 +43,6 @@ const users = {
   }
 }
 
-
-// Function to find user by email address
-const findUserByEmail = (email) => {
-  let user;
-  for (const userid in users) {
-    user = users[userid];
-    if (user.email === email) {
-      return user;
-    }
-  }
-  return null;
-}
-
 const urlsForUser = function (id) {
   let urls = {};
   for (const url in urlDatabase) {
@@ -83,8 +73,8 @@ app.post("/login", (req, res) => {
     return res.status(403).send("Invalid credentials");
   }
 
-  // find user by email address by calling findUserByEmail function
-  const user = findUserByEmail(email);
+  // find user by email address by calling getUserByEmail function
+  const user = getUserByEmail(email, users);
 
   // User does not exist, return status code 403
   if (!user) {
@@ -123,8 +113,8 @@ app.post("/register", (req, res) => {
     return res.status(400).send("Invalid credentials");
   }
 
-  // find user by email address by calling findUserByEmail function
-  let user = findUserByEmail(email);
+  // find user by email address by calling getUserByEmail function
+  let user = getUserByEmail(email, users);
 
   // Email address already exists, return status code 400
   if (user) {
@@ -222,7 +212,6 @@ app.post("/urls/:id", (req, res) => {
 
   // User is logged in and the user is the owner of the URL, update the URL
   urlDatabase[req.params.id]["longURL"] = req.body.newLongURL;
-  console.log(urlDatabase);
   res.redirect('/urls');
 })
 
@@ -239,7 +228,6 @@ app.post("/urls", (req, res) => {
   urlDatabase[shortURL]["longURL"] = req.body.longURL;
   urlDatabase[shortURL]["userID"] = user.id;
 
-  console.log(urlDatabase);
   res.redirect(`/urls/${shortURL}`);
 })
 
